@@ -1,5 +1,12 @@
 ---
 - hosts: all
+  handlers:
+    - name: restart apache
+      service: 
+        name: apache2
+        state: restarted
+      become: yes
+
   tasks:
     - name: 'Instala pacotes de dependecias do sistema operacional'
       apt:
@@ -36,6 +43,32 @@
     - name: 'Descompactar aquivo de instalação do wordpress'
       unarchive:
         src: /tmp/wordpress.tar.gz
-        dest: /var/www/
+        dest: '/var/www/'
         remote_src: yes
       become: yes
+    
+    - name: 'Copia arquivo de configuração do wordpress'
+      copy:
+        src: '/var/www/wordpress/wp-config-sample.php'
+        dest: /var/www/wordpress/wp-config.php'
+        remote_src: yes
+      become: yes
+
+    - name: 'Edita arquivo de configuracao do wordpress'
+      replace:
+        dest: '/var/www/wordpress/wp-config.php'
+        regexp: "{{ item.regex }}"
+        replace: "{{ item.value }}"
+      with_items:
+        - { regex: 'nome_do_banco_de_dados_aqui', value: 'wordpress_db'}
+        - { regex: 'nome_de_usuario_aqui', value: 'wordpress'}
+        - { regex: 'senha_aqui', value: '12345'}
+      become: yes
+
+    - name: 'Configura apache'
+      copy:
+        src: '/home/renan/Repositorio/ansible/wordpress/files/vhost.conf'
+        dest: '/etc/apache2/sites-available/000-default.conf'
+      become: yes
+      notify:
+        - restart apache
