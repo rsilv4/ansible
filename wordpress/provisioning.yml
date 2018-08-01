@@ -1,5 +1,51 @@
 ---
-- hosts: all
+- hosts: database
+  handlers:
+    - name: restart mysql
+      service: 
+        name: mysql
+        state: restarted
+      become: yes
+
+  tasks:
+    - name: 'Instala pacotes de dependecias do sistema operacional'
+      apt:
+        name: "{{ item }}"
+        update_cache: yes
+        state: latest
+      become: yes
+      with_items:
+        - mysql-server
+        - python-mysqldb
+    
+    - name: 'Criando banco mysql'
+      mysql_db:
+        name: wordpress_db
+        login_user: root
+        state: present
+
+    - name: 'Cria usuario do banco'
+      mysql_user:
+        login_user: root
+        name: wordpress
+        password: 12345
+        priv: 'wordpress_db.*:ALL'
+        state: present
+        host: "{{ item }}"
+      with_items:
+       - 'locahost'
+       - '127.0.0.1'
+       - '192.168.100.50'
+    
+    - name: 'Configura mysql para acesso remoto'
+      copy:
+        src: /home/renan/Repositorio/ansible/wordpress/files/my.cnf
+        dest: /etc/mysql/my.cnf
+      become: yes
+      notify:
+        - restart mysql
+
+- hosts: wordpress
   handlers:
     - name: restart apache
       service: 
@@ -11,6 +57,7 @@
     - name: 'Instala pacotes de dependecias do sistema operacional'
       apt:
         name: "{{ item }}"
+        update_cache: yes
         state: latest
       become: yes
       with_items:
@@ -20,55 +67,53 @@
         - php5-gd
         - libssh2-php
         - php5-mcrypt
-        - mysql-server
-        - python-mysqldb
         - php5-mysql
-    - name: 'Criando banco mysql'
-      mysql_db:
-        name: wordpress_db
-        login_user: root
-        state: present
-    - name: 'Cria usuario do banco'
-      mysql_user:
-        login_user: root
-        name: wordpress
-        password: 12345
-        priv: 'wordpress_db.*:ALL'
-        state: present
     - name: 'Baixa arquivos de instalação do wordpress'
       get_url:
         url: https://br.wordpress.org/wordpress-4.9.7-pt_BR.tar.gz
-        dest: '/tmp/wordpress.tar.gz'
+        dest: /tmp/wordpress.tar.gz
 
     - name: 'Descompactar aquivo de instalação do wordpress'
       unarchive:
         src: /tmp/wordpress.tar.gz
-        dest: '/var/www/'
+        dest: /var/www/
         remote_src: yes
       become: yes
     
     - name: 'Copia arquivo de configuração do wordpress'
       copy:
-        src: '/var/www/wordpress/wp-config-sample.php'
-        dest: /var/www/wordpress/wp-config.php'
+        src: /var/www/wordpress/wp-config-sample.php
+        dest: /var/www/wordpress/wp-config.php
         remote_src: yes
       become: yes
 
     - name: 'Edita arquivo de configuracao do wordpress'
       replace:
-        dest: '/var/www/wordpress/wp-config.php'
+        dest: /var/www/wordpress/wp-config.php
         regexp: "{{ item.regex }}"
         replace: "{{ item.value }}"
       with_items:
         - { regex: 'nome_do_banco_de_dados_aqui', value: 'wordpress_db'}
         - { regex: 'nome_de_usuario_aqui', value: 'wordpress'}
         - { regex: 'senha_aqui', value: '12345'}
+        - { regex: 'localhost', value: '192.168.100.51'}
       become: yes
 
-    - name: 'Configura apache'
-      copy:
-        src: '/home/renan/Repositorio/ansible/wordpress/files/vhost.conf'
-        dest: '/etc/apache2/sites-available/000-default.conf'
+    #- name: 'Configura apache'
+    #  copy:
+    #    src: /home/renan/Repositorio/ansible/wordpress/files/vhost.conf
+    #    dest: /etc/apache2/sites-available/000-default.conf
+    #  become: yes
+    #  notify:
+    #    - restart apache
+
+    - name: 'Edita arquivo de vhost'
+      replace:
+        dest: /etc/apache2/sites-available/default
+        regexp: "{{ item.regex }}"
+        replace: "{{ item.value }}"
+      with_items:
+        - { regex: 'DocumentRoot /var/www', value: 'DocumentRoot /var/www/wordpress'}
       become: yes
       notify:
         - restart apache
