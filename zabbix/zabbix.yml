@@ -8,38 +8,42 @@
       become: yes
 
   tasks: 
-    - name: "Baixando arquivos de configuração"
-      get_url:
-        url: https://repo.zabbix.com/zabbix/3.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.0-1%2Bxenial_all.deb
-        dest: /tmp/zabbix-release_3.0-2+xenial_all.deb
+    #- name: "Baixando arquivos de configuração"
+    #  get_url:
+    #    url: https://repo.zabbix.com/zabbix/3.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.0-1%2Bxenial_all.deb
+    #    dest: /tmp/zabbix-release_3.0-2+xenial_all.deb
     
-    - name: "Instalando o repositório de configuração"    
-      apt:
-        deb: /tmp/zabbix-release_3.0-2+xenial_all.deb
-        update_cache: yes
+    #- name: "Instalando o repositório de configuração"    
+    #  apt:
+    #    deb: /tmp/zabbix-release_3.0-2+xenial_all.deb
+    #    update_cache: yes
+    #  become: yes
+
+    #- name: "instala pacotes necessarios do zabbix"
+    #  apt:
+    #    name: "{{ item }}"
+    #  become: yes
+    #  with_items:
+    #    - zabbix-server-mysql
+    #    - zabbix-frontend-php
+    #    - zabbix-agent
+
+    - name: 'Copia template de arquivo de configuracao zabbix'
+      copy:
+        src: /home/renan/Documentos/ansible/zabbix/files/zabbix_server.conf
+        dest: /etc/zabbix/zabbix_server.conf
       become: yes
 
-    - name: "instala pacotes necessarios do zabbix"
-      apt:
-        name: "{{ item }}"
-        state: latest
-      become: yes
-      with_items:
-        - zabbix-server-mysql
-        - zabbix-frontend-php
-        - zabbix-agent
-
-    - name: 'Edita arquivo de configuracao zabbix_server.conf'
+    - name: "Edita arquivo de configuracao zabbix_server.conf"
       replace:
-        dest: /​etc/​zabbix/​zabbix_server.conf
+        dest: '/etc/zabbix/zabbix_server.conf'
         regexp: "{{ item.regex }}"
         replace: "{{ item.value }}"
-        remote_src: yes
       with_items:
-        - { regex: '#DBHost=localhost', value: 'DBHost=localhost'}
-        - { regex: 'DBName=zabbix', value: 'DBName=zabbix_db'}
-        - { regex: 'DBUser=zabbix', value: 'DBUser=zabbix_user'}
-        - { regex: '#DBPassword=zabbix', value: 'DBPassword=zabbix_pass'}
+        - { regex: 'DBHost=localhost', value: 'DBHost=localhostteste'}
+        - { regex: 'DBName=zabbix', value: 'DBName=zabbix_dbteste'}
+        - { regex: 'DBUser=zabbix', value: 'DBUser=zabbix_userteste'}
+        - { regex: 'DBPassword=zabbix', value: 'DBPassword=zabbix_passteste'}
       become: yes
 
       notify:
