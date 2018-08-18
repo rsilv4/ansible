@@ -8,25 +8,26 @@
       become: yes
 
   tasks: 
-    #- name: "Baixando arquivos de configuração"
-    #  get_url:
-    #    url: https://repo.zabbix.com/zabbix/3.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.0-1%2Bxenial_all.deb
-    #    dest: /tmp/zabbix-release_3.0-2+xenial_all.deb
+    - name: "Baixando arquivos de configuração"
+      get_url:
+        url: https://repo.zabbix.com/zabbix/3.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_3.0-1%2Bxenial_all.deb
+        dest: /tmp/zabbix-release_3.0-2+xenial_all.deb
     
-    #- name: "Instalando o repositório de configuração"    
-    #  apt:
-    #    deb: /tmp/zabbix-release_3.0-2+xenial_all.deb
-    #    update_cache: yes
-    #  become: yes
+    - name: "Instalando o repositório de configuração"    
+      apt:
+        deb: /tmp/zabbix-release_3.0-2+xenial_all.deb
+        update_cache: yes
+      become: yes
 
-    #- name: "instala pacotes necessarios do zabbix"
-    #  apt:
-    #    name: "{{ item }}"
-    #  become: yes
-    #  with_items:
-    #    - zabbix-server-mysql
-    #    - zabbix-frontend-php
-    #    - zabbix-agent
+    - name: "instala pacotes necessarios do zabbix"
+      apt:
+        name: "{{ item }}"
+      become: yes
+      with_items:
+        - zabbix-server-mysql
+        - python-mysqldb
+        - zabbix-frontend-php
+        - zabbix-agent
 
     - name: 'Copia template de arquivo de configuracao zabbix'
       copy:
@@ -40,11 +41,39 @@
         regexp: "{{ item.regex }}"
         replace: "{{ item.value }}"
       with_items:
-        - { regex: 'DBHost=localhost', value: 'DBHost=localhostteste'}
-        - { regex: 'DBName=zabbix', value: 'DBName=zabbix_dbteste'}
-        - { regex: 'DBUser=zabbix', value: 'DBUser=zabbix_userteste'}
-        - { regex: 'DBPassword=zabbix', value: 'DBPassword=zabbix_passteste'}
+        - { regex: 'DBHost=localhost', value: 'DBHost=localhost'}
+        - { regex: 'DBName=zabbix', value: 'DBName=zabbix'}
+        - { regex: 'DBUser=zabbix', value: 'DBUser=zabbix'}
+        - { regex: 'DBPassword=zabbix', value: 'DBPassword=zabbix'}
       become: yes
+
+    - name: "Criando banco mysql"
+      mysql_db:
+        name: zabbix
+        login_user: root
+        state: present
+      become: yes
+
+    - name: "Cria usuario do banco"
+      mysql_user:
+        login_user: root
+        name: 'zabbix'
+        password: 'zabbix'
+        priv: 'zabbix.*:ALL'
+        state: present
+        host: "{{ item }}"
+      with_items:
+       - 'locahost'
+       - '127.0.0.1'
+       - '34.217.75.38'
+      become: yes
+
+    #- name: "Restore database"
+    #  mysql_db:
+    #    name: zabbix
+    #    state: import
+    #    target: '/​usr/​share/​doc/​zabbix-server-mysql/create.sql.gz'
+    #  become: yes
 
       notify:
         - start zabbix-server
