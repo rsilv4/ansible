@@ -1,0 +1,73 @@
+---
+# tasks file for zabbix-mysql
+- name: Baixando repositorio remoto
+  get_url:
+    url: https://dev.mysql.com/get/mysql80-community-release-el7-1.noarch.rpm
+    dest: /tmp
+
+- name: Instalando repositorio mysql
+  yum:
+    name: /tmp/mysql80-community-release-el7-1.noarch.rpm
+    state: present
+
+- name: Instalando mysqld
+  yum:
+    update_cache: yes
+    name: 
+      - mysql-server
+      - python2-PyMySQL
+    state: present
+
+- name: Habilitando mysqld na inicialização e iniciando serviço 
+  systemd:
+    name: mysqld
+    state: started
+    enabled: yes
+
+- name: MariaDB | Create a new pass for root user
+  command: openssl rand -base64 6 creates=/root/.my.cnf
+  register: mysql_root_pass
+
+- name: MariaDB | Display new pass in playbook  output
+  debug:
+    msg: "New root pass: {{mysql_root_pass.stdout}}"
+  when: mysql_root_pass.changed
+
+- name: MariaDB | Change root pass
+  mysql_user: 
+    login_user: root
+    login_password: "{{mysql_root_pass.stdout}}"
+    host: localhost
+  when: mysql_root_pass.changed
+
+- name: MariaDB | Publish file .my.cnf in the root home
+  template:
+    src: /home/renan/Repositorio/devops/roles/zabbix-mysql/templates/client-my-cnf.j2
+    dest: /root/.my.cnf
+  when: mysql_root_pass.changed
+
+- name: Criando database zabbix
+  mysql_db:
+    login_user: root
+    login_password: "{{mysql_root_pass.stdout}}"
+    name: db_zabbix
+    collation: utf8_bin
+    encoding: utf8
+    state: present
+
+- name: Criando usuario database zabbix
+  mysql_user:
+    login_user: root
+    login_password: "{{mysql_root_pass.stdout}}"
+    name: db_zabbix
+    host: localhost
+    password: Zabbix@123***
+    priv: 'db_zabbix.*:ALL,GRANT'
+
+- name: Restore database zabbix
+  mysql_db:
+    login_user: root
+    login_password: "{{mysql_root_pass.stdout}}"
+    name: db_zabbix
+    state: import
+    target: /​usr/​share/​doc/​zabbix-server-mysql/create.sql.gz
