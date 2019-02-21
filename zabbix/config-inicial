@@ -1,0 +1,62 @@
+---
+# tasks file for confinicialservers
+- name: Parando firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+
+- name: Desabilitando firewalld
+  systemd:
+    name: firewalld
+    enabled: no
+
+- name: Parando NetworkManager
+  systemd: 
+    name: NetworkManager
+    state: stopped
+
+- name: Desabilitando NetworkManager
+  systemd:
+    name: NetworkManager
+    enabled: no
+
+- name: Alterar Hostname
+  hostname:
+    name: zabbix
+
+- name: Configura resolv.conf
+  copy:
+    src: /home/renan/Repositorio/devops/roles/ConfigServerInicial/templates/resolv.conf
+    dest: /etc/resolv.conf
+
+- name: Configura motd
+  copy:
+    src: /home/renan/Repositorio/devops/roles/ConfigServerInicial/templates/motd
+    dest: /etc/motd
+
+- name: Instalação pacotes basicos
+  yum:
+    update_cache: yes
+    name:
+      - epel-release
+      - net-tools
+      - tcpdump
+      - telnet
+      - nmap
+      - yum-utils
+      - wget
+    state: present
+
+- name: Download python-pip
+  get_url:
+    url: https://bootstrap.pypa.io/get-pip.py
+    dest: /tmp
+
+- name: Instalação python-pip
+  command: python /tmp/get-pip.py
+
+- name: Instalação PyMySQL
+  pip:
+    name: PyMySQL
+
+
